@@ -1,3 +1,5 @@
+#API TESTING FOR BOT
+#THERE IS NOTHING TO DO HERE YOU FILTHY USER
 import flask
 from flask import request
 import json
