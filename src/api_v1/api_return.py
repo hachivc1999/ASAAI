@@ -1,5 +1,4 @@
-#handle errors and messages of api
-
+#Handling the errors and messages of the api
 class Error():
     def __init__(self,code,mess):
         self.code = code
@@ -12,6 +11,7 @@ class Message():
         self.message = mess
     def get(self):
         return self.message
+    
 #--------------ERROR--------------------------
 def bad_request():
     return Error(400,'Bad request')
@@ -45,7 +45,7 @@ def unfavorite_remove_success():
     return Message(-2)
 
 def watchlist_success():
-    return Message(3)
+    return Message(2)
 
 def watchlist_remove_success():
-    return Message(-3)
+    return Message(-2)
