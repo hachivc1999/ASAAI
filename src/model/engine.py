@@ -5,10 +5,16 @@ from nltk.stem.porter import PorterStemmer
 import util, nltk, string
 from database import dbfetch
 import numpy as np
+
+#The first part of the recommendation system
+#Where the system calculates the similarities between each title using Tf-idf tokenized with nltk and cosine similarities
+#Since the project is real time recommendation, it is wise not to redo
+#The only time this file is called is when the bot upload a new title, the matrix needs to be recalculated again
+#The executioni time is not too bad, around 30 seconds for 200 titles
 class Engine():
-    #weights of each similarity
     matrix = []
     def __init__(self):
+        #initialize the weight of each similarity and max features for tokenizer
         self.WEIGHT_NAME = 0.1
         self.WEIGHT_PRODUCER = 0.2
         self.WEIGHT_DESCRIPTION = 0.1
@@ -17,15 +23,18 @@ class Engine():
         self.max_features = 1000
         
     def preprocess(self, lst):
-        #lowercase and remove punctuation
+        #preprocess the data by turning to lowercase and removing punctuation
         return [x.lower().replace("[0-9]",'num ').translate(str.maketrans('', '', string.punctuation)) for x in lst]
     
     def tf_idf_transform(self, tf, lst):
-        #return cosine similarity from tf idf
+        #return cosine similarities from tf idf
         arr = tf.fit_transform(lst)
         return linear_kernel(arr,arr)
         
     def train(self, path):
+        #where the training is done
+        #firstly, it needs to get the data from database
+        #luckily, pandas support reading from sqlite to Dataframe so the steps aren't that hard
         #read from sqlite to dataframe
         if path is None:
             return "Path not defined"
@@ -41,7 +50,7 @@ class Engine():
         descriptionReady = self.preprocess([x for x in rd.getColumn('description')])
         producerReady = self.preprocess([x for x in rd.getColumn('producer')])
         
-        #tfidf
+        #
         tf = TfidfVectorizer(tokenizer = self.tokenizer, max_features = self.max_features)
         nametf = np.array(self.tf_idf_transform(tf, nameReady))
         destf = np.array(self.tf_idf_transform(tf, descriptionReady))
