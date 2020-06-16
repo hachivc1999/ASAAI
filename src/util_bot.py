@@ -1,7 +1,7 @@
 import requests
 import json
 
-
+#THIS FILE IS FOR BOT ONLY
 TOKEN = 'eZGcnkJKIzZvpcZ0hSzzarEX1th6exKgJ0vpbKMD3y8wFIfXVr3DayYkbQT2ym8s'
 
 def fillMonthDay(s):
@@ -10,6 +10,9 @@ def fillMonthDay(s):
         return '0' + s
     return '0' + s[1] if s[0] == ' ' else s
 
+#convert a random date to suitable date format
+#the format of date in this project is:
+# (Season) year or (date/)month/year or Updating
 def parseDate(s):
     #convert date to uniform format
     if s == '' or s is None or s == []:
@@ -44,13 +47,7 @@ def parseDate(s):
                 season = dic.get(season,'')
                 retstr = season + year
     return retstr       
-print(parseDate('Mùa xuân 2/2017'))
-print(parseDate('Mùa xuân 1/2/2017'))
-print(parseDate('1/2/2017'))
-print(parseDate('2017'))
-print(parseDate('Mùa xuân 2017'))
-print(parseDate('Mùa xuân Đang cập nhật'))
-print(parseDate('đang cập nhật'))
+
 
 def jsonifyList(title, tags, seasons, path):
     #convert list to match db model
@@ -94,9 +91,10 @@ def jsonifyList(title, tags, seasons, path):
     print(dirr)
     with open(dirr, "w") as file:
         json.dump(newtitleList, file, indent=4)
+        
+#upload the file to server
 def upload(path):        
-    url = 'https://hachihachi.pythonanywhere.com/v1/upload' #DO NOT CHANGE
-    #url = 'http://127.0.0.1:5000/upload'
+    url = 'some_random_url.com/upload' #DO NOT CHANGE
     file = 'file' #DO NOT CHANGE
     ids = 'id' #DO NOT CHANGE
     
@@ -105,6 +103,3 @@ def upload(path):
     files = {file: open(dirr, 'rb')}
     payload = {ids: TOKEN}
     print(requests.post(url, files=files, data = payload))
-
-#path = 'C:/Users/asus/eclipse-workspace/ASSAIFlask/src/test.json' #INSERT PATH HERE
-#upload(path)
