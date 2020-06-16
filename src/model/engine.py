@@ -1,9 +1,9 @@
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
-from model import reader
 from nltk.stem.porter import PorterStemmer
-import util, nltk, string
+import util, nltk, string, sqlite3
 from database import dbfetch
+import pandas as pd
 import numpy as np
 
 #The first part of the recommendation system
@@ -26,10 +26,19 @@ class Engine():
         #preprocess the data by turning to lowercase and removing punctuation
         return [x.lower().replace("[0-9]",'num ').translate(str.maketrans('', '', string.punctuation)) for x in lst]
     
-    def tf_idf_transform(self, tf, lst):
-        #return cosine similarities from tf idf
+    def tf_idf_transform(self, lst):
+        #return cosine similarity from tf idf
+        tf = TfidfVectorizer(tokenizer = self.tokenizer, max_features = self.max_features)
         arr = tf.fit_transform(lst)
         return linear_kernel(arr,arr)
+    
+    def readSqlite(self, path, query):
+        #read the query from database and return
+        cur = sqlite3.connect(path)
+        df = pd.read_sql_query(query, cur)
+        cur.commit()
+        cur.close()
+        return df
         
     def train(self, path):
         #where the training is done
@@ -39,34 +48,29 @@ class Engine():
         if path is None:
             return "Path not defined"
         query = "SELECT id, name, transName, producer, description FROM AnimeModel"
-        rd = reader.Reader(path)
-        rd.readsqlite(path, query)
+        df = self.readSqlite(path, query)
         
-        #add column tags as string 
-        idlist = rd.getColumn('id')
-        tagList = [' '.join(util.jsonTags(dbfetch.getTag(i))) for i in idlist] #join with ''
-        nameList = [' '.join([m,n]) for m, n in zip(rd.getColumn('name'),rd.getColumn('transName'))]
-        nameReady = self.preprocess(nameList)
-        descriptionReady = self.preprocess([x for x in rd.getColumn('description')])
-        producerReady = self.preprocess([x for x in rd.getColumn('producer')])
+        #add column tags and join name with transName
+        df['tags'] = [' '.join(util.jsonTags(dbfetch.getTag(i))) for i in df['id']]
+        df['name'] = df['name'] + ' ' + df['transName']
         
-        #
-        tf = TfidfVectorizer(tokenizer = self.tokenizer, max_features = self.max_features)
-        nametf = np.array(self.tf_idf_transform(tf, nameReady))
-        destf = np.array(self.tf_idf_transform(tf, descriptionReady))
-        prodtf = np.array(self.tf_idf_transform(tf, producerReady))
-        tagtf = np.array(self.tf_idf_transform(tf, tagList))
-        #final cosine similarity matrix
-        total_similarity = np.round((destf*self.WEIGHT_DESCRIPTION + nametf*(self.WEIGHT_NAME) + prodtf*self.WEIGHT_PRODUCER + tagtf*self.WEIGHT_TAGS)*100/self.WEIGHT_TOTAL,5)
-        for i in range(0,len(total_similarity)):
-            #add 2 term into array, id and score
-            #score join every value in np array with ',' 
+        #making the tf-idf cosine similarity model
+        name = self.preprocess(df['name'])
+        nametf = np.array(self.tf_idf_transform(name))
+        producer = self.preprocess(df['producer'])
+        prodtf = np.array(self.tf_idf_transform(producer))
+        description = self.preprocess(df['description'])                      
+        desctf = np.array(self.tf_idf_transform(description))
+        tagtf = np.array(self.tf_idf_transform(df['tags']))
+        
+        #calculate the final similarity matrix based on each matrix weight
+        #after that, convert each row of the matrix to a string and insert to database for part 2, generating recommendations
+        total_similarity = np.round((desctf*self.WEIGHT_DESCRIPTION + nametf*(self.WEIGHT_NAME) + prodtf*self.WEIGHT_PRODUCER + tagtf*self.WEIGHT_TAGS)*100/self.WEIGHT_TOTAL,5)
+        for i in range(0,len(total_similarity)): 
             dbfetch.updateRecommendation(i + 1,(','.join(str(x) for x in total_similarity[i])))
-        #print('COMPLETED')
+        
     def tokenizer(self, text):
+        #this function allows to tokenize and stem the text
         words = nltk.word_tokenize(text)    
         ps = PorterStemmer()
         return [ps.stem(w) for w in words]
-    
-newTrainModel = Engine()
-newTrainModel.train(dbfetch.DB)
