@@ -121,8 +121,8 @@ def api_login():
         return api_err_400().get()
     
     #find input username in the database, if user not exists, return 401 (Unauthorized)
-    user = list(dbfetch.findUserbyName(username)[0])
-    if user is False or user[2] != password:
+    user = list(dbfetch.findUserbyName(username))
+    if not user or user[0][2] != password:
         return api_err_401().get()
     else:
         #generate a nonexistence token. Then, update the token in the database and return it
@@ -332,6 +332,9 @@ def api_err_405():
 @app.errorhandler(409)
 def api_err_409(e):
     return api_return.conflict(e)
+@app.errorhandler(500)
+def api_err_500():
+    return api_return.server_error().get()
 @app.errorhandler(503)
 def api_err_503():
     return api_return.maintenance()
