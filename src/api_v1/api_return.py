@@ -23,6 +23,8 @@ def not_allowed():
     return Error(405, 'Method not allowed')
 def conflict(u):
     return Error(409,'User {} already exists'.format(u))
+def server_error():
+    return Error(500, 'Something wrong with the server')
 def maintenance():
     return Error(503,'Server in maintenance')
 #---------------RETURN MESSAGE-----------------
