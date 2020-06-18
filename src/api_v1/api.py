@@ -285,7 +285,6 @@ def api_recommend():
     verify = verifyToken(tk)
     if type(verify) == Error:
         return verify.get()    
-    
     #get username
     #get the recommended titles from database through a function
     #please check file recommend.py in /src/model for more detail
@@ -293,9 +292,8 @@ def api_recommend():
     #query the id to get full title details and return it with compatibleScore
     username = verify[1]
     recommend = recommendation.generateRecommendation(username)
-    titleList = [dbfetch.getTitleById(x[0])[0] for x in recommend]
-    compatibleList = [x[1] for x in recommend]
-    return jsonify(util.jsonTitle(titleList, compatible = compatibleList))          
+    titleList = dbfetch.getTitleById(recommend[:,0])
+    return jsonify(util.jsonTitle(titleList, compatible = recommend[:,1]))           
 
 #verify the token from a request
 def verifyToken(tk):
