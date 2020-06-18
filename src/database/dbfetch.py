@@ -1,6 +1,6 @@
 import sqlite3
 
-DB = 'C:/Users/asus/eclipse-workspace/ASSAIFlask/src/database/assai.db' #when testing put your directory here
+DB = 'SUM TING WONG?'
 
 def getAll():
     #get user watching list
@@ -118,25 +118,117 @@ def getTitle(param):
 
     return animeList
 
-def getTitleById(ids):
+def getTitle2(name, tag = [], unwanttag = []):
+    #parameter list can be id,name or tags, use for search
+    #util parameter as follows:
+    #cur.execute(query,param) with param as list filling into query
+    #example: cur.execute('SELECT abc FROM xyz WHERE id = ? AND name = ?',[1,'abcd'])
+    #note: title name should be stored as lowercase letter
+
+    # param list type:  name, list of tag, list of unwanttag
+    # neu khong co name thi pass None o param name
+
     conn = create_connection(DB)
+
+    animeListName = []
+    if name:#param[0]:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM AnimeModel WHERE name LIKE ? OR transName LIKE ?",('%'+name+'%','%'+name+'%'))         ##
+        result = cur.fetchall() #search by name
+        
+        animeListName = getSeasonTag(result)
+
+        if result and not tag and not unwanttag:
+            return animeListName
+        elif not result:
+            return 0                    # wrong name
+
+    # search by tag-----------------------------------------------------------------------------------------------------------------
+    if not tag:#(len(param) == 1): ##
+        return 0            #user dont input tag 
+
     cur = conn.cursor()
-    cur.execute("SELECT * FROM AnimeModel WHERE id = ?",(ids,))
+    animeList = []
+
+    if not animeListName:
+        cur.execute("SELECT distinct id, name, transName, producer, pictureLink, deion, favoriteCount, rank FROM AnimeModel INNER JOIN AnimeTag ON AnimeModel.id = AnimeTag.animeId WHERE AnimeTag.tagName LIKE ?",('%'+tag[0]+'%',))
+        #get anime of first tag
+        result = cur.fetchall()
+
+        animeList = getSeasonTag(result)
+    else:
+        # tag and name search
+        animeList = animeListName
+        animeTagFilter = []
+        if  (len(tag) > 0): #(len(param) > 1):                            #sai
+            for tagParam in range(0,len(tag)): #range(1,len(param)):
+                for anime in animeList:
+                    for temp in range(0,len(anime[9])):        #loop in tag list anime
+                        if (anime[9][temp][0] == tag[tagParam]):
+                            animeTagFilter.append(anime)
+
+                animeList = animeTagFilter
+                animeTagFilter = []
+        if not animeList:
+            return 0
+        return animeList
+    
+    # tag search
+    animeTagFilter = []
+    if (len(tag) > 1): #(len(param) > 2):                            #sai
+        for tagParam in range(1,len(tag)): #range(2,len(param)):
+            for anime in animeList:
+                for temp in range(0,len(anime[9])):        #loop in tag list anime
+                    if (anime[9][temp][0] == tag[tagParam]):
+                        animeTagFilter.append(anime)
+
+            animeList = animeTagFilter
+            animeTagFilter = []
+    #print(animeList)
+    tempAnimeList = []
+    for anime in animeList:
+        tempAnimeList.append(anime)
+    if unwanttag:
+        for anime in animeList:
+            #print("amime: " + str(anime[0]) +" len: " + str(len(anime[9])))
+            for temp in range(0,len(anime[9])):
+                #print(anime[9][temp][0])
+                if(anime[9][temp][0] in unwanttag):
+                    # print("remove: ")
+                    # print(anime[0])
+                    # print("------")
+                    tempAnimeList.remove(anime)
+
+
+def getTitleById(idLst):
+    conn = create_connection(DB)
+
+    sql = "SELECT * FROM AnimeModel WHERE id IN ("
+    for x in range(0,idLst.size-1):
+        sql = sql + str(idLst[x])+ ","
+    sql = sql + str(idLst[idLst.size - 1]) + ")"
+    cur = conn.cursor()
+    # cur.execute("SELECT * FROM AnimeModel WHERE id = ?",(id,))
+    
+    cur.execute(sql)
     result = cur.fetchall() #search by name
     
     animeDetail = getSeasonTag(result)
 
     return animeDetail
 
-
-
 def getAllTitle():
     #get all title, use for recommending algorithm
     conn = create_connection(DB)
-
-
     cur = conn.cursor()
     cur.execute('SELECT * FROM AnimeModel')
+    row = cur.fetchall()
+    return row
+
+def getIdAllTitle():
+    conn = create_connection(DB)
+    cur = conn.cursor()
+    cur.execute('SELECT id FROM AnimeModel')
     row = cur.fetchall()
     return row
 
@@ -367,7 +459,6 @@ def updateNotFavoriteList(username, titleID, option = 0):
         cur.execute('SELECT userName, animeId FROM NotFavorite  WHERE userName = ? AND animeId = ?',(username,titleID))
 
         listAnime = cur.fetchall()
-        print(listAnime)
         if listAnime:
             temp = listAnime[0]
             if (username == temp[0] and titleID == temp[1]):
@@ -453,6 +544,19 @@ def updateWatchingList(username, titleID, option = 0):
     conn.close()
     return 1 #success
     
+def getSomeRecommendation(ids):
+    conn = create_connection(DB)
+
+    sql = "SELECT * FROM AnimeRankingModel WHERE mainAnimeId IN ("
+    for x in range(0,len(ids)-1):
+        sql = sql + str(ids[x])+ ","
+    sql = sql + str(ids[len(ids) - 1]) + ")"
+    cur = conn.cursor()
+    # cur.execute("SELECT * FROM AnimeModel WHERE id = ?",(id,))
+    cur.execute(sql)
+    result = cur.fetchall() #search by name
+    return result
+
 def getRecommendation(titleId):
     #return compatibility ranking of title
     conn = create_connection(DB)
@@ -557,7 +661,6 @@ def addTitle(title):
                 sql = "INSERT INTO SeasonModel(seasonName, realeaseDate, numberOfEpisode, isCompleted,link, animeId) VALUES(?,?,?,?,?,?)"
                 cur.execute(sql,(season[0],season[1],season[2],season[3],season[4],animeId))
                 conn.commit()
-            print(title[8])
             for tag in title[8]:
                 updateTag(tag)
 
@@ -621,6 +724,3 @@ def updateTag(tagname):
 
             conn.commit()
     conn.close()
-
-#print(getCompatibleFavoriteList('DMMSang'))
-#print(getWatchingList('DMMSang'))
