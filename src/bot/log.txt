@@ -1,0 +1,55 @@
+****************************************************************************
+Mon, Jun 22, 2020:
+Changes log:
+- Version: 1.3.2
+- Configure DOWNLOAD_DELAY to not flood the website
+- Configure CONCURRENT_REQUESTS to not flood the website
+- Configure CONCURRENT_REQUESTS_PER_DOMAIN to not flood the website
+- Fix caching when the anime can't be crawl
+
+****************************************************************************
+Mon, Jun 22, 2020:
+Changes log:
+- Version: 1.3.1
+- Add crawl anime according to seasons
+- Add cache to not recrawl link
+- Configure to match with server's data format for season
+
+****************************************************************************
+Wed, Jun 17, 2020:
+Changes log:
+- Version: 1.2.0
+- Add filters for some fields to match with server's data format
+- Configure to save crawl info to a json file
+- Configure to upload the file to the server
+
+****************************************************************************
+Sun, Jun 14, 2020:
+Changes log:
+- Version: 1.1.3
+- Fix bugs when there are empty fields on 'myanimelist.net'
+- Fix some css fields on 'myanimelist.net'
+- Add crawler by using library html-requests
+
+****************************************************************************
+Wed, Jun 10, 2020:
+Changes log:
+- Version: 1.1.2
+- Add crawl info from 'myanimelist.net'
+- Fix some css fields on 'anime47.com'
+
+***********************************************************
+Tue, Jun 9, 2020:
+Changes log:
+- Version: 1.1.1
+- Fix bugs when there are empty fields on 'anime47.com'
+- Fix crawling information from wrong css fields
+
+***********************************************************
+Mon, Jun 1, 2020:
+
+Changes log:
+- Version: 1.0.0
+- First release
+
+***********************************************************
