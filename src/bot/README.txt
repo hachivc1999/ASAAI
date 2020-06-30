@@ -25,7 +25,7 @@ python upload.py
 		~ assai_bot/items.py
 		~ assai_bot/settings.py
 
-All details about the bot, you can found at:
+This bot is created with scrapy, you can found all the details at:
 https://docs.scrapy.org/en/latest/index.html
 
 ****************************************************************************
