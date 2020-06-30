@@ -1,0 +1,25 @@
+https://anime47.com/phim/sword-art-online-alicization-dai-chien-underworld-2/m7455.html
+https://anime47.com/phim/sword-art-online-alicization-dai-chien-underworld/m7374.html
+https://anime47.com/phim/date-a-live-season-2/m4029.html
+https://anime47.com/phim/binan-koukou-chikyuu-bouei-bu-love-love/m5715.html
+https://anime47.com/phim/binan-koukou-chikyuu-bouei-bu-love/m4699.html
+https://anime47.com/phim/binan-koukou-chikyuu-bouei-bu-happy-kiss/m6747.html
+https://anime47.com/phim/white-album-2/m3658.html
+https://anime47.com/phim/yuru-yuri-san-hai/m5249.html
+https://anime47.com/phim/yuru-yuri/m7513.html
+https://anime47.com/phim/hoi-uc-cua-mot-geisha/m7039.html
+https://anime47.com/phim/khong-ai-biet/m7041.html
+https://anime47.com/phim/biri-gal/m7048.html
+https://anime47.com/phim/yeu-lai-tu-dau/m7058.html
+https://anime47.com/phim/tamayura-sotsugyou-shashin/m5415.html
+https://anime47.com/phim/gto-great-teacher-onizuka-1998-onizuka-thay-giao-vi-dai/m3464.html
+https://anime47.com/phim/gto-great-teacher-onizuka-2012-onizuka-thay-giao-vi-dai/m2601.html
+https://anime47.com/phim/gto-taiwan-2014/m4005.html
+https://anime47.com/phim/gto-great-teacher-onizuka-season-2-live-action-2014/m4528.html
+https://anime47.com/phim/great-teacher-onizuka-gto-new-years-special/m4067.html
+https://anime47.com/phim/great-teacher-onizuka-gto-graduation-special/m4068.html
+https://anime47.com/phim/bartender-nguoi-pha-che-ruou/m4511.html
+
+
+cd assai_bot
+scrapy crawl assai -o doithuong.json
