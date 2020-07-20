@@ -6,9 +6,9 @@ from .util import *
 from ..items import AnimeItem, SeasonsItem
 
 anime47_dict = {
-    ' TV': '', ' Bluray': '', ' Blu-ray': '', ' (Blu-ray)': '', ' [BD]': '',
+    ' TV': '', ' Bluray': '', ' Blu-ray': '', ' (Blu-ray)': '', ' [BD]': '', ' [bd]': '',
     ' BD': '', ' [Blu-ray]': '', ' (Blu-ray )': '', ' Bd': '', ' ONA': ' (ONA)',
-    ' [SS1]': '', ' SS1': '',
+    ' [ss1]': '', ' [SS1]': '', ' SS1': '', ' [Bd]': '', ' Vietsub': '',
     ' ~': ' Movie: ',
     'Ψ Nan': 'Ψ-nan',
     'Ψ-nan: Shidou-hen': 'Ψ-nan: Ψ-shidou-hen',
@@ -61,7 +61,20 @@ anime47_dict = {
     'Kyoukai no Kanata Episode 0: Shinonome': 'Kyoukai no Kanata: Shinonome',
     'Kyoukai no Kanata Movie: I\'ll Be Here - Kako-hen': 'Kyoukai no Kanata Movie 1: I\'ll Be Here - Kako-hen',
     'Kyoukai no Kanata Movie: I\'ll Be Here - Mirai-hen': 'Kyoukai no Kanata Movie 2: I\'ll Be Here - Mirai-hen',
-    'Miss Monochrome:': 'Miss Monochrome'
+    'Miss Monochrome:': 'Miss Monochrome',
+    'Denpa Onna to Seishun Otoko Special': 'Denpa Onna to Seishun Otoko: Mayonaka no Taiyou',
+    'Flanders No Inu (movie) Dog Of Flanders': 'Flanders no Inu (Movie)',
+    'Gekijouban Ano Hi Mita Hana No Namae O Bokutachi Wa Mada Shiranai [movie]': 'Ano Hi Mita Hana no Namae wo Bokutachi wa Mada Shiranai. Movie',
+    'Gj-bu (good Job Club)': 'Gj-bu',
+    'Mahoutsukai no Yome - Hoshi Matsu Hito': 'Mahoutsukai no Yome: Hoshi Matsu Hito',
+    'Nanatsu-iro Drops': 'Nanatsu-iro★Drops',
+    'Ore No Imouto Ga Konnani Kawaii Wake Ga Nai SS2': 'Ore No Imouto Ga Konnani Kawaii Wake Ga Nai.',
+    'Saki: Zenkoku-hen': 'Saki Zenkoku-hen',
+    'Sister Princess Re Pure Ss2': 'Sister Princess: Re Pure',
+    'Super Sonico The Animation': 'Soni-Ani: Super Sonico The Animation',
+    'To Heart 2 Tv+ova': 'To Heart 2',
+    'Tonari No Kaibutsu-kun: Tonari No Gokudou-kun (ova 1)': 'Tonari No Kaibutsu-kun: Tonari No Gokudou-kun',
+    'Working!! Ss2': 'Working!! 2'
 }
 
 myanimelist_dict = {
@@ -80,7 +93,7 @@ tags_dict = {
     'Lịch Sử': 'Historical', 'Trinh Thám': 'Dectective', 'Kinh Dị': 'Horror',
     'Học Đường': 'School', 'Siêu Nhiên': 'Supernatural', 'Thể Thao': 'Sports',
     'Hành Động': 'Action', 'Âm Nhạc': 'Music', 'Phép Thuật': 'Magic',
-    'Viễn Tưởng': 'Sci-Fi'
+    'Viễn Tưởng': 'Sci-Fi', ' Mystery': 'Mystery', ' Mecha': 'Mecha'
 }
 
 seasons_dict = {'Mùa Xuân ': "Spring ", "Mùa Hạ ": "Summer ", "Mùa Thu ": "Autumn ", "Mùa Đông ": "Winter "}
@@ -135,6 +148,16 @@ def date_parser(date: str, season: str):
     return release_date
 
 
+def synomyms_parser(search_results):
+    synonyms_list = []
+    for result in search_results:
+        synonym = result.text
+        synonym = synonym.split(', ') if ', ' in synonym else [synonym]
+        synonyms_list += synonym
+    synonyms_list = [myanimelist_parser(synonym) for synonym in synonyms_list]
+    return synonyms_list
+
+
 def anime_url_search(name: str, l_transName: list, search_result: list):
     if not search_result:
         return name, ''
@@ -152,21 +175,21 @@ def anime_url_search(name: str, l_transName: list, search_result: list):
             # print("Here 2")
             return title, anime_url
 
-        synonyms_list = ''
-        time.sleep(1)
+        # Delay for not flooding the website
+        time.sleep(4)  # 5
+
         html = HTML(html=HTMLSession().get(anime_url).content)
         results = html.find('.borderClass div .spaceit_pad')
-        for result in results:
-            synonyms_list += result.text + ', '
-        synonyms_list = myanimelist_parser(synonyms_list)
-        synonyms_list = synonyms_list.split(', ')
+        synonyms_list = synomyms_parser(results)
+        synonyms_list = [synonym.lower() for synonym in synonyms_list]
         # print("List of synonyms: ", synonyms_list)
+        if name.lower() in synonyms_list:
+            # print("Here 3")
+            return title, anime_url
+
         for synonym in synonyms_list:
-            if synonym.lower() == name.lower():
-                # print("Here 3")
-                return title, anime_url
-            if synonym.lower() in list_transName:
-                # print("Here 4")
+            if synonym in list_transName:
+                # print("Synonym: ", synonym)
                 return title, anime_url
 
     return name, ''
@@ -218,10 +241,16 @@ class AssAI(scrapy.Spider):
         ## Load previous run for not recrawling pages
         self.reload_data()
         self.cache(response.url)
+
+        # Delay for not flooding the website
+        # time.sleep(2)
+
         for anime_block in response.css('.movie-item.m-block'):
             anime_link = anime_block.css('a::attr(href)').extract()[0]
             anime_link = response.urljoin(anime_link)
             if not self.isCrawled(anime_link):
+                # Delay for not flooding the website
+                time.sleep(2)
                 yield scrapy.Request(anime_link, callback=self.parse_anime)
 
         """ Move to the next page """
@@ -229,20 +258,39 @@ class AssAI(scrapy.Spider):
         max_page = int(page_link.split('/')[-1].replace('.html', ''))
         self.last_page = max_page if max_page > self.last_page else self.last_page
 
-        if self.page_number % 5 == 0:
-            print("\n#################################################################################################")
-            print("Report: ",end="##################################################################################\n")
-            print("Current page: ", self.page_number)
-            print("Crawled: " + str(len(self.crawled)) + " | Can't crawl: " + str(len(self.cant_crawl)))
-            print("#################################################################################################\n")
-            time.sleep(5)
+        # print("\n#################################################################################################")
+        # print("Report: ", end="")
+        # print("#########################################################################################")
+        # print("Current page: ", self.page_number)
+        # print("Crawled: " + str(len(self.crawled)) + " | Can't crawl: " + str(len(self.cant_crawl)))
+        # print("#################################################################################################\n")
+
+        # Delay for not flooding the website
+        time.sleep(2)
+
         self.page_number += 1
         if self.page_number <= self.last_page:
             url = response.url.replace(str(self.page_number - 1) + '.html', str(self.page_number) + '.html')
             if not self.isCrawled(url):
+                # Delay for not flooding the website
+                time.sleep(2)
                 yield scrapy.Request(url, callback=self.parse)
 
     def parse_anime(self, response):
+        """ If it's a Live Action or has only Promotional Video, it won't be crawled """
+        if response.css('.imdb::text').extract()[0] == 'PV':
+            return None
+
+        name = response.css('.title-1::text').extract()[0]
+        if 'live action' in name.lower():
+            return None
+
+        l_transName = response.css('.title-2::text').extract()
+        l_transName = l_transName[0] if l_transName else ''
+        if l_transName:
+            if 'live action' in l_transName.lower():
+                return None
+
         season_table = response.css('table tr td a::attr(href)').extract()
         if season_table:
             l_anime = []
@@ -251,6 +299,8 @@ class AssAI(scrapy.Spider):
                 url = response.urljoin(season)
                 if not self.isCrawled(url):
                     self.cache(url)
+                    # Delay for not flooding the website
+                    time.sleep(2)
                     anime, anime_seasons = self.crawl_season(url)
                     if anime:
                         l_anime += [anime]
@@ -263,12 +313,10 @@ class AssAI(scrapy.Spider):
                 for anime in l_anime:
                     anime['seasons'] = l_season
                     yield anime
-            else:
-                self.update_cant_crawl(response.url)
-                print("In parse anime - Can't crawl seasons: ", response.url,
-                      end=' |-------------------------------------------------------------------------------------\n')
         else:
             self.cache(response.url)
+            # Delay for not flooding the website
+            time.sleep(2)
             anime = AssAI.crawl_anime(response)
             if anime:
                 yield anime
@@ -279,20 +327,13 @@ class AssAI(scrapy.Spider):
 
     @staticmethod
     def crawl_anime(response):  # This method works with the response object from scrapy
-        if response.css('.imdb::text').extract()[0] == 'PV':
-            return None
-
         """ Crawl the anime's name and transName for search """
         name = response.css('.title-1::text').extract()[0]
-        if 'live action' in name.lower():
-            return None
         name = anime47_parser(name)
 
         l_transName = response.css('.title-2::text').extract()
         l_transName = l_transName[0] if l_transName else ''
         if l_transName:
-            if 'live action' in l_transName.lower():
-                return None
             if ' | ' in l_transName:
                 l_transName = l_transName.split(' | ')
             else:  # Ensure that, type(l_transName) is list
@@ -320,7 +361,10 @@ class AssAI(scrapy.Spider):
         """ Crawl some data on myanimelist.net """
         keyword = name.replace(' ', '%20')
         myanimelist_search = AssAI.search_url + str(keyword)
-        time.sleep(1)
+
+        # Delay for not flooding the website
+        time.sleep(3)
+
         search_result = HTML(html=HTMLSession().get(myanimelist_search).content).find(
             '.information.di-tc.va-t.pt4.pl8 a', containing=name)
         search_result.sort(key=lambda x: x.text)
@@ -329,12 +373,16 @@ class AssAI(scrapy.Spider):
 
         if not anime_url:
             if not l_transName:
-                print("In crawl anime - Can't crawl: ", name, end=" |*******************************************************\n")
+                print("In crawl anime - Can't crawl: ", name,
+                      end=" |*******************************************************\n")
                 return None
             for transName in l_transName:
                 keyword = transName.replace(' ', '%20')
                 myanimelist_search = AssAI.search_url + str(keyword)
-                time.sleep(1)
+
+                # Delay for not flooding the website
+                time.sleep(3)
+
                 search_result = HTML(html=HTMLSession().get(myanimelist_search).content).find(
                     '.information.di-tc.va-t.pt4.pl8 a')
                 name, anime_url = anime_url_search(name, l_transName, search_result)
@@ -346,16 +394,25 @@ class AssAI(scrapy.Spider):
             print(l_transName, end=" |*******************************************************\n")
             return None
 
-        time.sleep(1)
+        # Delay for not flooding the website
+        time.sleep(3)
+
         html = HTML(html=HTMLSession().get(anime_url).content)
 
         """ Crawl the anime's description """
         description = html.find('h2+ span', first=True)
         description = description.text if description else ''
 
-        """ Crawl and reformat the anime's transName if it's None """
-        transName = html.find('h2+ .spaceit_pad', first=True)
-        transName = transName.text if transName else ''
+        """ Crawl and reformat the anime's transName if it's available """
+        results = html.find('.borderClass div .spaceit_pad')
+        if results:
+            transName = synomyms_parser(results)
+            transName = '; '.join(transName)
+        else:
+            transName = ''
+
+        # transName = html.find('h2+ .spaceit_pad', first=True)
+        # transName = transName.text if transName else ''
 
         """ Crawl the producer, anime status and the number of episodes of the anime """
         producer = episode = status = ''
@@ -375,7 +432,7 @@ class AssAI(scrapy.Spider):
         anime_seasons['isCompleted'] = 1 if 'Finished' in status else 0
         anime_seasons['link'] = response.url
         anime_seasons['name'] = anime['name'] = myanimelist_parser(name)
-        anime['transName'] = myanimelist_parser(transName)
+        anime['transName'] = transName
         anime['producer'] = '' if producer == 'None found, add some' else producer
         anime['pictureLink'] = image_link
         anime['tags'] = tags
@@ -428,7 +485,10 @@ class AssAI(scrapy.Spider):
         """ Crawl some data on myanimelist.net """
         keyword = name.replace(' ', '%20')
         myanimelist_search = AssAI.search_url + str(keyword)
-        time.sleep(1)
+
+        # Delay for not flooding the website
+        time.sleep(3)
+
         search_result = HTML(html=HTMLSession().get(myanimelist_search).content).find(
             '.information.di-tc.va-t.pt4.pl8 a', containing=name)
         search_result.sort(key=lambda x: x.text)
@@ -437,12 +497,16 @@ class AssAI(scrapy.Spider):
 
         if not anime_url:
             if not l_transName:
-                print("In crawl anime - Can't crawl: ", name, end=" |*******************************************************\n")
+                print("In crawl anime - Can't crawl: ", name,
+                      end=" |*******************************************************\n")
                 return None, None
             for transName in l_transName:
                 keyword = transName.replace(' ', '%20')
                 myanimelist_search = AssAI.search_url + str(keyword)
-                time.sleep(1)
+
+                # Delay for not flooding the website
+                time.sleep(3)
+
                 search_result = HTML(html=HTMLSession().get(myanimelist_search).content).find(
                     '.information.di-tc.va-t.pt4.pl8 a')
                 name, anime_url = anime_url_search(name, l_transName, search_result)
@@ -454,16 +518,25 @@ class AssAI(scrapy.Spider):
             print(l_transName, end=" |*******************************************************\n")
             return None, None
 
-        time.sleep(1)
+        # Delay for not flooding the website
+        time.sleep(3)
+
         html = HTML(html=HTMLSession().get(anime_url).content)
 
         """ Crawl the anime's description """
         description = html.find('h2+ span', first=True)
         description = description.text if description else ''
 
-        """ Crawl and reformat the anime's transName if it's None """
-        transName = html.find('h2+ .spaceit_pad', first=True)
-        transName = transName.text if transName else ''
+        """ Crawl and reformat the anime's transName if it's available """
+        results = html.find('.borderClass div .spaceit_pad')
+        if results:
+            transName = synomyms_parser(results)
+            transName = '; '.join(transName)
+        else:
+            transName = ''
+
+        # transName = html.find('h2+ .spaceit_pad', first=True)
+        # transName = transName.text if transName else ''
 
         """ Crawl the producer, anime status and the number of episodes of the anime """
         producer = episode = status = ''
@@ -479,7 +552,7 @@ class AssAI(scrapy.Spider):
         anime_seasons = SeasonsItem()
 
         anime['name'] = anime_seasons['name'] = myanimelist_parser(name)
-        anime['transName'] = myanimelist_parser(transName)
+        anime['transName'] = transName
         anime['producer'] = '' if producer == 'None found, add some' else producer
         anime['pictureLink'] = image_link
         anime['tags'] = tags
