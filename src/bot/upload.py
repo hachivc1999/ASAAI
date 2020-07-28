@@ -16,5 +16,5 @@ def upload(path):
     print(requests.post(url, files=files, data=payload))
 
 
-path = 'D:/Programming/Pycharm Project/assai/assai_bot/doithuong.json'  # INSERT PATH HERE
-upload(path)
+directory = 'D:/Programming/Pycharm Project/assai/assai_bot/doithuong.json'  # INSERT PATH HERE
+upload(directory)
