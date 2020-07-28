@@ -55,7 +55,7 @@ anime47_dict = {
     'Papa No Iukoto Wo Kikinasai OVA': 'Papa No Iukoto Wo Kikinasai! OVA',
     'Classroom Crisis': 'Classroom☆Crisis',
     'Aria the Origination Special': 'Aria the Origination: Sono Choppiri Himitsu no Basho ni...',
-    'Grisaia Phantom Trigger - The Animation': 'Grisaia: Phantom Trigger - The Animation',
+    'Grisaia Phantom Trigger - The Animation': 'Grisaia: Phantom Trigger The Animation',
     'Room Mate: One Room Side M': 'Room Mate',
     'Crayon Shin-chan Movie 23: Ora no Hikkoshi Monogatari Saboten Dai Shugeki': 'Crayon Shin-chan Movie 23: Ora no Hikkoshi Monogatari - Saboten Daisuugeki',
     'Kyoukai no Kanata Episode 0: Shinonome': 'Kyoukai no Kanata: Shinonome',
@@ -74,7 +74,7 @@ anime47_dict = {
     'Super Sonico The Animation': 'Soni-Ani: Super Sonico The Animation',
     'To Heart 2 Tv+ova': 'To Heart 2',
     'Tonari No Kaibutsu-kun: Tonari No Gokudou-kun (ova 1)': 'Tonari No Kaibutsu-kun: Tonari No Gokudou-kun',
-    'Working!! Ss2': 'Working!! 2'
+    'Working!! Ss2': 'Working!! 2',
 }
 
 myanimelist_dict = {
@@ -176,7 +176,7 @@ def anime_url_search(name: str, l_transName: list, search_result: list):
             return title, anime_url
 
         # Delay for not flooding the website
-        time.sleep(4)  # 5
+        time.sleep(4)
 
         html = HTML(html=HTMLSession().get(anime_url).content)
         results = html.find('.borderClass div .spaceit_pad')
@@ -198,7 +198,6 @@ def anime_url_search(name: str, l_transName: list, search_result: list):
 class AssAI(scrapy.Spider):
     name = 'assai'
     base_url = 'https://anime47.com'
-    # TODO: search_url = 'https://myanimelist.net/anime.php?q='
     search_url = 'https://myanimelist.net/search/all?q='
     start_urls = [
         # 'https://anime47.com/the-loai/hai-huoc-24/1.html'
@@ -242,9 +241,6 @@ class AssAI(scrapy.Spider):
         self.reload_data()
         self.cache(response.url)
 
-        # Delay for not flooding the website
-        # time.sleep(2)
-
         for anime_block in response.css('.movie-item.m-block'):
             anime_link = anime_block.css('a::attr(href)').extract()[0]
             anime_link = response.urljoin(anime_link)
@@ -258,13 +254,6 @@ class AssAI(scrapy.Spider):
         max_page = int(page_link.split('/')[-1].replace('.html', ''))
         self.last_page = max_page if max_page > self.last_page else self.last_page
 
-        # print("\n#################################################################################################")
-        # print("Report: ", end="")
-        # print("#########################################################################################")
-        # print("Current page: ", self.page_number)
-        # print("Crawled: " + str(len(self.crawled)) + " | Can't crawl: " + str(len(self.cant_crawl)))
-        # print("#################################################################################################\n")
-
         # Delay for not flooding the website
         time.sleep(2)
 
@@ -277,7 +266,7 @@ class AssAI(scrapy.Spider):
                 yield scrapy.Request(url, callback=self.parse)
 
     def parse_anime(self, response):
-        """ If it's a Live Action or has only Promotional Video, it won't be crawled """
+        """ If the movie is a Live Action or only has a Promotional Video, it won't be crawled """
         if response.css('.imdb::text').extract()[0] == 'PV':
             return None
 
@@ -300,7 +289,7 @@ class AssAI(scrapy.Spider):
                 if not self.isCrawled(url):
                     self.cache(url)
                     # Delay for not flooding the website
-                    time.sleep(2)
+                    time.sleep(2.5)
                     anime, anime_seasons = self.crawl_season(url)
                     if anime:
                         l_anime += [anime]
@@ -410,9 +399,6 @@ class AssAI(scrapy.Spider):
             transName = '; '.join(transName)
         else:
             transName = ''
-
-        # transName = html.find('h2+ .spaceit_pad', first=True)
-        # transName = transName.text if transName else ''
 
         """ Crawl the producer, anime status and the number of episodes of the anime """
         producer = episode = status = ''
@@ -534,9 +520,6 @@ class AssAI(scrapy.Spider):
             transName = '; '.join(transName)
         else:
             transName = ''
-
-        # transName = html.find('h2+ .spaceit_pad', first=True)
-        # transName = transName.text if transName else ''
 
         """ Crawl the producer, anime status and the number of episodes of the anime """
         producer = episode = status = ''
