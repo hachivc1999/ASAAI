@@ -74,7 +74,7 @@ anime47_dict = {
     'Super Sonico The Animation': 'Soni-Ani: Super Sonico The Animation',
     'To Heart 2 Tv+ova': 'To Heart 2',
     'Tonari No Kaibutsu-kun: Tonari No Gokudou-kun (ova 1)': 'Tonari No Kaibutsu-kun: Tonari No Gokudou-kun',
-    'Working!! Ss2': 'Working!! 2',
+    'Working!! Ss2': 'Working!! 2'
 }
 
 myanimelist_dict = {
