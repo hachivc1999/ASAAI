@@ -2,6 +2,14 @@ import random
 import string
 #This file convert useful data to desired format
 
+tagposdb = 8
+seasonposdb = 7
+tagposjson = 5
+seasonposjson = 7
+titlekey = ['id','name', 'transName','producer','pictureLink','tags','description','seasons','favoriteCount']
+seasonkey = ['name','releaseDate','numberOfEpisode','isCompleted','link']
+
+
 def jsonTags(tags):
     #convert these [('tag1',),('tag2',)] to ['tag1','tag2']
     return [tag[0] for tag in tags]
@@ -19,15 +27,6 @@ def jsonName(names):
 def jsonTitle(titleList, compatible = [], fil = []):
     #the most important function
     #convert the database format to dictionary so that it can be return as json files
-    
-    tagposdb = 9        #tag position in database format
-    seasonposdb = 8     #season position in database format
-    tagposjson = 5      #tag position in dictionary format
-    seasonposjson = 7   #season position in dictionary format
-    
-    #keys
-    titlekey = ['id','name', 'transName','producer','pictureLink','tags','description','seasons','favoriteCount','rank']
-    seasonkey = ['name','releaseDate','numberOfEpisode','isCompleted','link']
     newtitleList = []
     
     #loop for generating dictionary
@@ -55,7 +54,7 @@ def jsonTitle(titleList, compatible = [], fil = []):
             # with filter as [non,fav,watching], filter will be 0 if title not in anything
             # if f in some array, value of it will be different. 0 for normal, 1 for fav, 2 for non, 3 for fav+ watching and 4 for nonfav+watching
             idtitle = title[0]
-            f = round(sum([x+0.7 for x in range(0,3) if idtitle in fil[x]]))
+            f = round(sum([x+0.6 for x in range(0,3) if idtitle in fil[x]]))
             title.append(f)
             title = dict(zip(titlekey + ['status'], title))
         
@@ -75,51 +74,15 @@ def dejsonTitle(lst):
         for key,value in title.items():
             if key == 'seasons':
                 for season in value:
-                    seasons.append([item[1] for item in season.items()])
+                    seasons.append([season.get(item) for item in seasonkey])
             elif key == 'tags':
                 tags = value
             else:
                 titlevalue.append(value)
-                
-        #insert seasons and tags at the end to match database format
         titlevalue.append(seasons)
         titlevalue.append(tags)
         titlelist.append(titlevalue)
     return titlelist
-
-#check whether a dict title satisfies the condition to be inserted into db
-def checkMatching(dic):
-    #match length
-    if len(dic) != 7:
-        return False
-    titlekey = ('name', 'transName','producer','pictureLink','tags','description','seasons')
-    seasonkey = ('name','releaseDate','numberOfEpisode','isCompleted','link')
-    dickey, dicvalue = zip(*dic.items())
-    print(dicvalue[5])
-    #match keys
-    if dickey != titlekey:
-        return False
-    #match type except season
-    if not all(type(dicvalue[x]) is str for x in [0,1,2,3,5]) or type(dicvalue[4]) is not list:
-        return False
-    season = dicvalue[6]
-    for s in season:
-        #match season length
-        if len(s) != 5:
-            return False
-        skey, svalue = zip(*s.items())
-        #match season key
-        if skey != seasonkey:
-            return False
-        #match type
-        if not all(type(svalue[x]) is str for x in [0,1,4]) or type(svalue[2]) is not int or svalue[3] not in [0,1]:
-            return False
-        if svalue[1][4] != '-' or svalue[1][7]!= '-' or len(svalue[1])!= 10:
-            return False
-        date = svalue[1].split('-')
-        if len(date) != 3 or int(date[1]) > 12 or int(date[2]) > 31:
-            return False
-    return True
 
 #get a length 16 string token
 def generateToken(strlen = 16):
@@ -136,3 +99,12 @@ def searchPreprocess(name, tags, unwantedTags):
     unwantedTags = [] if unwantedTags is None else unwantedTags.split(',')
     return name,tags, unwantedTags
 
+def validAccount(username, password):
+    #check if an account is valid or not
+    if len(username) < 6 or len(password) < 6:
+        return False
+    valid = string.ascii_letters + string.digits
+    for letter in username:
+        if letter not in valid:
+            return False
+    return True
