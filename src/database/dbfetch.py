@@ -45,93 +45,6 @@ def getSeasonTag(result):
     return animeList
 
 #-------------------INTERACTING WITH APPLICATION------------------------------------
-'''
-def getTitle(name, tag = [], unwanttag = []):
-    #parameter list can be id,name or tags, use for search
-    #util parameter as follows:
-    #cur.execute(query,param) with param as list filling into query
-    #example: cur.execute('SELECT abc FROM xyz WHERE id = ? AND name = ?',[1,'abcd'])
-    #note: title name should be stored as lowercase letter
-
-    # param list type:  name, list of tag, list of unwanttag
-    # neu khong co name thi pass None o param name
-
-    conn = create_connection(DB)
-
-    animeListName = []
-    if name:#param[0]:
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM AnimeModel WHERE name LIKE ? OR transName LIKE ?",('%'+name+'%','%'+name+'%'))         ##
-        result = cur.fetchall() #search by name
-
-        if not result:
-            return 0                    # wrong name
-
-        animeListName = getSeasonTag(result)
-
-        if result and not tag and not unwanttag:
-            return animeListName
-
-
-    # search by tag-----------------------------------------------------------------------------------------------------------------
-    if not tag:#(len(param) == 1): ##
-        return 0            #user dont input tag
-
-    cur = conn.cursor()
-    animeList = []
-
-    if not animeListName:
-        cur.execute("SELECT distinct id, name, transName, producer, pictureLink, description, favoriteCount FROM AnimeModel INNER JOIN AnimeTag ON AnimeModel.id = AnimeTag.animeId WHERE AnimeTag.tagName LIKE ?",('%'+tag[0]+'%',))
-        #get anime of first tag
-        result = cur.fetchall()
-
-        animeList = getSeasonTag(result)
-    else:
-        # tag and name search
-        animeList = animeListName
-        animeTagFilter = []
-        if  (len(tag) > 0): #(len(param) > 1):                            #sai
-            for tagParam in range(0,len(tag)): #range(1,len(param)):
-                for anime in animeList:
-                    for temp in range(0,len(anime[8])):        #loop in tag list anime
-                        if (anime[8][temp][0] == tag[tagParam]):
-                            animeTagFilter.append(anime)
-
-                animeList = animeTagFilter
-                animeTagFilter = []
-        if not animeList:
-            return 0
-        return animeList
-
-    # tag search
-    animeTagFilter = []
-    if (len(tag) > 1): #(len(param) > 2):                            #sai
-        for tagParam in range(1,len(tag)): #range(2,len(param)):
-            for anime in animeList:
-                for temp in range(0,len(anime[8])):        #loop in tag list anime
-                    if (anime[8][temp][0] == tag[tagParam]):
-                        animeTagFilter.append(anime)
-
-            animeList = animeTagFilter
-            animeTagFilter = []
-    #print(animeList)
-    tempAnimeList = []
-    for anime in animeList:
-        tempAnimeList.append(anime)
-    if unwanttag:
-        for anime in animeList:
-            #print("amime: " + str(anime[0]) +" len: " + str(len(anime[9])))
-            for temp in range(0,len(anime[8])):
-                #print(anime[9][temp][0])
-                if(anime[8][temp][0] in unwanttag):
-                    # print("remove: ")
-                    # print(anime[0])
-                    # print("------")
-                    tempAnimeList.remove(anime)
-
-
-    return tempAnimeList
-'''
 def getTitle(name, tag = [], unwanttag = []):
     #parameter list can be id,name or tags, use for search
     #util parameter as follows:
@@ -269,6 +182,14 @@ def getTitleByIdV2(idLst):
 
     animeDetail = getSeasonTag(result)
 
+    return animeDetail
+
+def getOneTitle(id):
+    conn = create_connection(DB)
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM AnimeModel WHERE id = ?",(id,))
+    result = cur.fetchall()
+    animeDetail = getSeasonTag(result)
     return animeDetail
 
 def getAllTitle():
