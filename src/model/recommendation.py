@@ -63,7 +63,6 @@ def generateNormalRecommendation(fav, nonfav, lst):
         scoreStr = compatibleList.get(title)
         scoreFav,scoreNon = split_withlst(scoreStr, fav,nonfav)
         sf, sn = matchSize(scoreFav.size, scoreNon.size)
-        sf,sn = (int(sf),int(sn))
         topFav = scoreFav if sf >= scoreFav.size else -np.sort(np.partition(-scoreFav,sf)[:sf])
         topNon = scoreNon if sn >= scoreNon.size else -np.sort(np.partition(-scoreNon,sn)[:sn])
         score = geometricSeriesDualAverage(topFav,topNon)
@@ -83,25 +82,26 @@ def updateCompatible(username, t = 0):
     #the function will also return the list of compatibleScore as user called
     favorite = generateFavList(username)
     if favorite.size == 0:
-        return []
+        return np.array([])
     if favorite.size == 1:
-        return [DEFAULT_SCORE]
-    result = []
-    lst = t if t != 0 else favorite
+        return np.array([favorite[0],DEFAULT_SCORE])
+    lst = t if t.size != 0 else favorite
+    arr = np.zeros((lst.size,2))
     nonFavorite = generateNonFavList(username)
     compatibleList = dict(dbfetch.getSomeRecommendation(lst))
-    for title in lst:
+    for i in range(0,lst.size):
+        title = lst[i]
         scoreStr = compatibleList.get(title)
         scoreFav, scoreNon = split_withlst(scoreStr, favorite, nonFavorite)
         sf, sn = matchSize(scoreFav.size, scoreNon.size)
-        sf, sn = (int(sf),int(sn))
         topFav = scoreFav if sf >= scoreFav.size else -np.sort(np.partition(-scoreFav,sf)[:sf])
         topNon = scoreNon if sn >= scoreNon.size else -np.sort(np.partition(-scoreNon,sn)[:sn])
         score = geometricSeriesDualAverage(topFav,topNon)
         score = 10 if score < 10 else np.round(score,2)
-        result.append(score)          
-        dbfetch.updateCompatibleFavoriteList(username, str(title), score)
-    return result
+        arr[i] = (title,score)
+    s = arr.tostring()
+    dbfetch.updateCompatibleUser(username, s)
+    return arr
 
 def generateFavList(username):
     #return a numpy array containing id of favorite title
@@ -130,22 +130,38 @@ def generateFilter(username):
     #generate a filter for status code calculation
     return [generateFavList(username), generateNonFavList(username), generateWatchingList(username)]
 
+def generateWatchingScore(username, ids):
+    #generate watching score for every title
+    s = dbfetch.getCompatible(username)
+    if not s:
+        return np.array([]), np.array([])
+    s = s[0][0]
+    arr = np.frombuffer(s, dtype = float)
+    mask = np.isin(arr[::2],ids)
+    return arr[::2][mask],arr[1::2][mask]
+
+def generateRandomTitle():
+    #generate random title
+    titles = [int(x[0]) for x in dbfetch.getIdAllTitle()]
+    if len(titles) > RECOMMENDATION_SIZE:
+        titles = random.sample(titles, RECOMMENDATION_SIZE)
+    return titles
+
 def split_compatible(s):
     #remember we allocates the compatible as string in part 1?
     #here we convert it back to numpy array
     return np.array([int(x) for x in s.split(',')])
 
-def split_withlst(s,lst, lst2 = []):
+def split_withlst(s,lst, lst2 = np.array([])):
     #further optimizing the code by spliting and removing unwanted compatibleScore
-    arr = s.split(' ')
-    dic = dict(zip(arr[::2],arr[1::2]))
+    arr = np.frombuffer(s, dtype = float)
     if lst2.size != 0:
-        return np.array([float(dic.get(str(x))) for x in lst if dic.get(str(x)) is not None]), np.array([float(dic.get(str(x))) for x in lst2 if dic.get(str(x)) is not None])  
-    return np.array([float(dic.get(str(x))) for x in lst if dic.get(str(x)) is not None]), np.array([])
+        return arr[1::2][np.in1d(arr[::2],lst,assume_unique = True)], arr[1::2][np.in1d(arr[::2],lst2,assume_unique = True)]
+    return arr[1::2][np.in1d(arr[::2],lst,assume_unique = True)], np.array([])
 
 def split_withoutlst(s,lst):
     #split the string to list and remove all which position are in lst
-    arr = np.array(s.split(' ')).astype('float')
+    arr = np.frombuffer(s, dtype = float)
     _,con,_ = np.intersect1d(arr[::2],lst, return_indices = True, assume_unique = True)
     return np.delete(arr,[con*2,con*2+1])
 
@@ -192,3 +208,7 @@ def matchSize(f,n):
         #ex: 10,25,4
         return n+rs,n
     return rs*1.5,rs*0.5
+
+def makeRange(x,y = None):
+    #a function same as range() for python but return numpy array
+    return np.arange(x,y) if y else np.arange(0,x)
