@@ -18,12 +18,12 @@ BOT_TOKEN = 'eZGcnkJKIzZvpcZ0hSzzarEX1th6exKgJ0vpbKMD3y8wFIfXVr3DayYkbQT2ym8s'
 #homepage
 @app.route('/', methods=['GET'])
 def home():
-    return '''<h1>Anime Selecting Application using Artificial Intelligence</h1>'''
+    return '''<h1>Anime Selecting System using Artificial Intelligence</h1>'''
 
 #return all titles from database in json format
 @app.route('/all', methods=['GET'])
 def api_all():
-    #checking errors from request
+    #checking
     update = checkUpdate()
     if type(update) == Error:
         return update.get()
@@ -41,10 +41,51 @@ def api_all():
     fil = recommendation.generateFilter(username)
     return jsonify(util.jsonTitle(result, fil = fil))
 
+#paging for all titles
+@app.route('/page/<int:p>')
+def api_titlepage(p):
+    #checking
+    update = checkUpdate()
+    if type(update) == Error:
+        return update.get()
+    tk = request.headers.get('id')
+    verify = verifyToken(tk)
+    if type(verify) == Error:
+        return verify.get()
+    
+    #/page/0 will return number of pages
+    #/page/n will return page n
+    if p == 0:
+        counter = dbfetch.maxTitle()[0][0]
+        return jsonify([counter])
+    else:     
+        titles = dbfetch.getTitleById(rc.makeRange(p*10 - 10, p*10))
+        fil = rc.generateFilter(verify[1])
+        json = util.jsonTitle(titles, fil = fil)
+        return  jsonify(json)
+
+#return a list of random titles
+@app.route('/rng', methods=['GET'])
+def api_random():
+    #checking
+    update = checkUpdate()
+    if type(update) == Error:
+        return update.get()
+    tk = request.headers.get('id')
+    verify = verifyToken(tk)
+    if type(verify) == Error:
+        return verify.get()
+    
+    username = verify[1]
+    titles = rc.generateRandomTitle()
+    fil = rc.generateFilter(username)
+    json = util.jsonTitle(titles, fil = fil)
+    return  jsonify(json)
+
 #search function, return conditional title
 @app.route('/search', methods=['GET'])
 def api_search():
-    #checking errors from requests
+    #checking
     update = checkUpdate()
     if type(update) == Error:
         return update.get()
@@ -62,14 +103,21 @@ def api_search():
     tags = param.get('tags')
     unwantedTags = param.get('not')
     
+    #checking whether all of them are empty. If so, it is a bad request
+    if not (name or tags or unwantedTags):
+        return api_err_400().get()
     #preprocess the title, return the format of name and tags
     #for name, it is a string; for tags and unwanted tags, it is a list of string
     name,tags,unwantedTags = util.searchPreprocess(name, tags, unwantedTags)
     
     #get title from database based on input and return with filter (status code)
-    titles = dbfetch.getTitle([name] + tags + unwantedTags)
-    fil = recommendation.generateFilter(username)
-    return jsonify([]) if titles == 0 else jsonify(util.jsonTitle(titles, fil = fil))
+    titles = dbfetch.getTitle(name, tags, unwantedTags)
+    #if there is no title
+    if titles == 0:
+        return jsonify([])
+    fil = rc.generateFilter(username)
+    json = util.jsonTitle(titles, fil = fil)
+    return  jsonify(json)
 
 #handling user registration
 #a user can register to the system
@@ -80,7 +128,7 @@ def api_register():
     if type(update) == Error:
         return update.get()
     
-    #getting username as password from request
+    #getting username and password from request
     param = request.form
     username = param.get('name')
     password = param.get('pw')
@@ -89,6 +137,10 @@ def api_register():
     if not (username and password):
         return api_err_400().get()
    
+    #if the account does not fulfill certain condition, return 400 (Bad request)
+    if not util.validAccount(username, password):
+        return api_err_400().get()
+
     #find input username in the database, if user exists, return 409 (Conflict)
     user = dbfetch.findUserbyName(username)
     if user != []:
@@ -111,7 +163,7 @@ def api_login():
     if type(update) == Error:
         return update.get()
     
-    #getting username as password from request
+    #getting username and password from request
     param = request.form
     username = param.get('name')
     password = param.get('pw')
@@ -120,18 +172,51 @@ def api_login():
     if not (username or password):
         return api_err_400().get()
     
+    #if the account does not fulfill certain condition, return 400 (Bad request)
+    if not util.validAccount(username, password):
+        return api_err_400().get()
+    
     #find input username in the database, if user not exists, return 401 (Unauthorized)
     user = list(dbfetch.findUserbyName(username))
     if not user or user[0][2] != password:
         return api_err_401().get()
     else:
-        #generate a nonexistence token. Then, update the token in the database and return it
+        #generate a new, not-in-database token. Then, update the token in the database and return it
         tk = util.generateToken()
         while type(verifyToken(tk)) != Error:
             tk = util.generateToken()
         dbfetch.addUser(tk,username, password)
         return jsonify(api_return.login_success(tk).get())
 
+#changing user password
+@app.route('/pwc', methods = ['POST'])
+def api_change_pw():
+    #checking for server maintenance
+    update = checkUpdate()
+    if type(update) == Error:
+        return update.get()
+    param = request.form
+    
+    #getting username, password and newpassword from request
+    username = param.get('name')
+    password = param.get('pw')
+    newpassword = param.get('new')
+    
+    #if any of these fields is None, return 400 (Bad request)
+    if not (username and password and newpassword):
+        return api_err_400().get()
+    
+    #if the new account does not fulfill certain condition, return 400 (Bad request)
+    if not util.validAccount(username, newpassword):
+        return api_err_400().get()
+    
+    #changing user password by searching in database. If username + old password exists, update them. If not, return 401 (Unauthorized)
+    res = dbfetch.changeUserPassword(username, password, newpassword)
+    if res == 0:
+        return api_err_401().get()
+    else:
+        return jsonify('SUCCESS')
+    
 #update or return user favorite list
 @app.route('/fav', methods=['GET','POST'])
 def api_fav_update():
@@ -155,8 +240,19 @@ def fav_get(header):
 
     #getting username and using it to get favorite titles and their compatibleScore
     username = verify[1]
-    newCompatible = recommendation.updateCompatible(username)
-    return jsonify(util.jsonTitle(dbfetch.getFavoriteList(username),compatible = newCompatible))
+    idCompatible = recommendation.updateCompatible(username)
+    
+    #for some reasons, numpy does not allow (1,2) matrix, redeeming it as (2,). Therefore, handling result is required
+    if idcompatible.size == 0:
+        return jsonify([])
+    if idcompatible.size == 1:
+        ids = idcompatible[0]
+        compatible = idcompatible[1]
+        return jsonify(util.jsonTitle(dbfetch.getTitleById(ids),compatible = compatible))
+    else:
+        ids = idcompatible[:,0]
+        compatible = idcompatible[:,1]
+        return jsonify(util.jsonTitle(dbfetch.getTitleById(ids),compatible = compatible))
     
 def fav_post(form):
     #checking token from database
@@ -172,19 +268,21 @@ def fav_post(form):
     #add to favorite list
     if option == 'af':
         dbfetch.updateFavoriteList(username,title,0)
-        return jsonify(api_return.favorite_success().get()) #return 1
+        return jsonify(api_return.favorite_success().get())
     #remove from favorite list
     elif option == 'rf':
         dbfetch.updateFavoriteList(username, title,1)
-        return jsonify(api_return.favorite_remove_success().get()) # return -1
+        return jsonify(api_return.favorite_remove_success().get())
     #add to nonFavorite list
+    #somehow, the person building the database change the method input that make this function different from the former
+    #it requires casting the title id to integer first
     elif option == 'an':
         dbfetch.updateNotFavoriteList(username,int(title),0)
-        return jsonify(api_return.unfavorite_success().get()) #return 2
+        return jsonify(api_return.unfavorite_success().get())
     #remove from nonFavorite list
     elif option == 'rn':
         dbfetch.updateNotFavoriteList(username,int(title),1)
-        return jsonify(api_return.unfavorite_remove_success().get()) #return -2
+        return jsonify(api_return.unfavorite_remove_success().get())
     else:
         #if option is None or not correct, return 400 (Bad request)
         return jsonify(api_err_400().get())
@@ -215,9 +313,13 @@ def watchlist_get(header):
     #after that, return the titles with their compatible scores
     username = verify[1]
     ids = util.jsonId(dbfetch.getIdWatchingList(username))
-    idcompatible = dbfetch.getCompatibleFavoriteList(username)
-    compatible = [1]*len(ids) if idcompatible == 1 else [y[1] for x in ids for y in idcompatible if str(x) == y[0]]
-    return jsonify(util.jsonTitle(dbfetch.getWatchingList(username),compatible = compatible))
+    if len(ids) == 0:
+        return jsonify([])
+    ids = util.jsonId(ids)
+        ids, compatible = recommendation.generateWatchingScore(username, ids)
+    if ids.size == 0:
+        return jsonify([])
+    return jsonify(util.jsonTitle(dbfetch.getTitleById(ids),compatible = compatible))
     
 def watchlist_post(form):
     #checking token from database
@@ -233,11 +335,11 @@ def watchlist_post(form):
     if option == 'a':
         #add title to watching list
         dbfetch.updateWatchingList(username,int(title),0)
-        return jsonify(api_return.watchlist_success().get()) #return 2
+        return jsonify(api_return.watchlist_success().get()) 
     elif option == 'r':
         #remove title from watching list
         dbfetch.updateWatchingList(username, int(title),1)
-        return jsonify(api_return.watchlist_remove_success().get()) #return -2
+        return jsonify(api_return.watchlist_remove_success().get())
     else:
         #when option is None or not match, return 400 (Bad request)
         return jsonify(api_err_400().get())
@@ -285,6 +387,7 @@ def api_recommend():
     verify = verifyToken(tk)
     if type(verify) == Error:
         return verify.get()    
+    
     #get username
     #get the recommended titles from database through a function
     #please check file recommend.py in /src/model for more detail
@@ -292,6 +395,8 @@ def api_recommend():
     #query the id to get full title details and return it with compatibleScore
     username = verify[1]
     recommend = recommendation.generateRecommendation(username)
+    if recommend.size == 0:
+        return jsonify([])
     titleList = dbfetch.getTitleById(recommend[:,0])
     return jsonify(util.jsonTitle(titleList, compatible = recommend[:,1]))           
 
@@ -338,7 +443,7 @@ def api_err_503():
     return api_return.maintenance()
 
 
-#BOT AREA, USER NOT ALLOWED
+#function for BOT
 import time
 @app.route('/upload', methods = ['POST'])
 def api_upload():
@@ -358,16 +463,13 @@ def api_upload():
     file_json = json.loads(file_bytes)
     title = util.dejsonTitle(file_json)
 
-    #since some events may take a lot of time, before inserting to db, the server need to wait a period of time
+    #since some events may take a lot of time, before inserting to db, the server need to wait for every users to disconnect
     time.sleep(30)
     
     #inserting into database
     for t in title:
-        #check for any corrupted data
-        if util.checkMatching(t[0]):
-            t.insert(5,0)
-            t.insert(6,0)
-            dbfetch.addTitle(t)
+        t.insert(5,0)
+        dbfetch.addTitle(t)
             
     #retraining model. After that, turn the DATABASE_UPDATE back to False
     newTrainModel = engine.Engine()
