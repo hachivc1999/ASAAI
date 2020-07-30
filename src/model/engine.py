@@ -66,8 +66,11 @@ class Engine():
         #calculate the final similarity matrix based on each matrix weight
         #after that, convert each row of the matrix to a string and insert to database for part 2, generating recommendations
         total_similarity = np.round((desctf*self.WEIGHT_DESCRIPTION + nametf*(self.WEIGHT_NAME) + prodtf*self.WEIGHT_PRODUCER + tagtf*self.WEIGHT_TAGS)*100/self.WEIGHT_TOTAL,5)
-        for i in range(0,len(total_similarity)): 
-            dbfetch.updateRecommendation(i + 1,(','.join(str(x) for x in total_similarity[i])))
+        #remove low similarity between titles
+        for i in range(0,len(total_similarity)):
+            arr = np.vstack((np.arange(1,total_similarity[i].size + 1),total_similarity[i])).T
+            arr = arr[np.logical_and((arr[:,1] >= 10), (arr[:,1] < 100)),:]
+            dbfetch.updateRecommendation(i + 1, arr.tostring())
         
     def tokenizer(self, text):
         #this function allows to tokenize and stem the text
