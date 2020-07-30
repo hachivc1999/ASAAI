@@ -33,92 +33,20 @@ def getSeasonTag(result):
     cur = conn.cursor()
     animeList = []
     for anime in result:
+        aid = anime[0]
         anime = list(anime)
-        cur.execute("SELECT seasonName, realeaseDate, numberOfEpisode, isCompleted,link FROM AnimeModel INNER JOIN SeasonModel ON AnimeModel.id = SeasonModel.animeId WHERE AnimeModel.name LIKE ?"
-        ,('%'+anime[1]+'%',))
+        cur.execute("SELECT seasonName, realeaseDate, numberOfEpisode, isCompleted,link FROM AnimeModel INNER JOIN SeasonModel ON AnimeModel.id = SeasonModel.animeId WHERE AnimeModel.id = ?", (aid,))
         temp = cur.fetchall()
         anime.append(temp)
-
-        
-        cur.execute("SELECT tagName FROM AnimeModel INNER JOIN AnimeTag ON AnimeModel.id = AnimeTag.animeId  WHERE AnimeModel.name LIKE ?"
-        ,('%'+anime[1]+'%',))
+        cur.execute("SELECT tagName FROM AnimeModel INNER JOIN AnimeTag ON AnimeModel.id = AnimeTag.animeId  WHERE AnimeModel.id = ?", (aid,))
         anime.append(cur.fetchall())
-        
         animeList.append(anime)
-    
+
     return animeList
 
 #-------------------INTERACTING WITH APPLICATION------------------------------------
-def getTitle(param):
-    #parameter list can be id,name or tags, use for search
-    #util parameter as follows:
-    #cur.execute(query,param) with param as list filling into query
-    #example: cur.execute('SELECT abc FROM xyz WHERE id = ? AND name = ?',[1,'abcd'])
-    #note: title name should be stored as lowercase letter
-
-    # param list type:  [name, tag1, tag2,...]
-
-    conn = create_connection(DB)
-
-    animeListName = []
-    if param[0]:
-        cur = conn.cursor()
-        cur.execute("SELECT * FROM AnimeModel WHERE name LIKE ?",('%'+param[0]+'%',))
-        result = cur.fetchall() #search by name
-        
-        animeListName = getSeasonTag(result)
-
-        if result and len(param) == 1:
-            return animeListName
-        elif not result:
-            return 0                    # wrong name
-
-    # search by tag-----------------------------------------------------------------------------------------------------------------
-    if(len(param) == 1):
-        return 0            #user dont input tag 
-
-    cur = conn.cursor()
-    animeList = []
-
-    if not animeListName:
-        cur.execute("SELECT id, name, transName, producer, pictureLink, description, favoriteCount, rank FROM AnimeModel INNER JOIN AnimeTag ON AnimeModel.id = AnimeTag.animeId WHERE AnimeTag.tagName LIKE ?",('%'+param[1]+'%',))
-        
-        result = cur.fetchall()
-
-        animeList = getSeasonTag(result)
-    else:
-        # tag and name search
-        animeList = animeListName
-        animeTagFilter = []
-        if (len(param) > 1):                            #sai
-            for tagParam in range(1,len(param)):
-                for anime in animeList:
-                    for temp in range(0,len(anime[9])):        #loop in tag list anime
-                        if (anime[9][temp][0] == param[tagParam]):
-                            animeTagFilter.append(anime)
-
-                animeList = animeTagFilter
-                animeTagFilter = []
-        if not animeList:
-            return 0
-        return animeList
-    
-    # tag search
-    animeTagFilter = []
-    if (len(param) > 2):                            #sai
-        for tagParam in range(2,len(param)):
-            for anime in animeList:
-                for temp in range(0,len(anime[9])):        #loop in tag list anime
-                    if (anime[9][temp][0] == param[tagParam]):
-                        animeTagFilter.append(anime)
-
-            animeList = animeTagFilter
-            animeTagFilter = []
-         
-
-    return animeList
-
-def getTitle2(name, tag = [], unwanttag = []):
+'''
+def getTitle(name, tag = [], unwanttag = []):
     #parameter list can be id,name or tags, use for search
     #util parameter as follows:
     #cur.execute(query,param) with param as list filling into query
@@ -135,23 +63,25 @@ def getTitle2(name, tag = [], unwanttag = []):
         cur = conn.cursor()
         cur.execute("SELECT * FROM AnimeModel WHERE name LIKE ? OR transName LIKE ?",('%'+name+'%','%'+name+'%'))         ##
         result = cur.fetchall() #search by name
-        
+
+        if not result:
+            return 0                    # wrong name
+
         animeListName = getSeasonTag(result)
 
         if result and not tag and not unwanttag:
             return animeListName
-        elif not result:
-            return 0                    # wrong name
+
 
     # search by tag-----------------------------------------------------------------------------------------------------------------
     if not tag:#(len(param) == 1): ##
-        return 0            #user dont input tag 
+        return 0            #user dont input tag
 
     cur = conn.cursor()
     animeList = []
 
     if not animeListName:
-        cur.execute("SELECT distinct id, name, transName, producer, pictureLink, deion, favoriteCount, rank FROM AnimeModel INNER JOIN AnimeTag ON AnimeModel.id = AnimeTag.animeId WHERE AnimeTag.tagName LIKE ?",('%'+tag[0]+'%',))
+        cur.execute("SELECT distinct id, name, transName, producer, pictureLink, description, favoriteCount FROM AnimeModel INNER JOIN AnimeTag ON AnimeModel.id = AnimeTag.animeId WHERE AnimeTag.tagName LIKE ?",('%'+tag[0]+'%',))
         #get anime of first tag
         result = cur.fetchall()
 
@@ -163,8 +93,8 @@ def getTitle2(name, tag = [], unwanttag = []):
         if  (len(tag) > 0): #(len(param) > 1):                            #sai
             for tagParam in range(0,len(tag)): #range(1,len(param)):
                 for anime in animeList:
-                    for temp in range(0,len(anime[9])):        #loop in tag list anime
-                        if (anime[9][temp][0] == tag[tagParam]):
+                    for temp in range(0,len(anime[8])):        #loop in tag list anime
+                        if (anime[8][temp][0] == tag[tagParam]):
                             animeTagFilter.append(anime)
 
                 animeList = animeTagFilter
@@ -172,14 +102,14 @@ def getTitle2(name, tag = [], unwanttag = []):
         if not animeList:
             return 0
         return animeList
-    
+
     # tag search
     animeTagFilter = []
     if (len(tag) > 1): #(len(param) > 2):                            #sai
         for tagParam in range(1,len(tag)): #range(2,len(param)):
             for anime in animeList:
-                for temp in range(0,len(anime[9])):        #loop in tag list anime
-                    if (anime[9][temp][0] == tag[tagParam]):
+                for temp in range(0,len(anime[8])):        #loop in tag list anime
+                    if (anime[8][temp][0] == tag[tagParam]):
                         animeTagFilter.append(anime)
 
             animeList = animeTagFilter
@@ -191,28 +121,152 @@ def getTitle2(name, tag = [], unwanttag = []):
     if unwanttag:
         for anime in animeList:
             #print("amime: " + str(anime[0]) +" len: " + str(len(anime[9])))
-            for temp in range(0,len(anime[9])):
+            for temp in range(0,len(anime[8])):
                 #print(anime[9][temp][0])
-                if(anime[9][temp][0] in unwanttag):
+                if(anime[8][temp][0] in unwanttag):
                     # print("remove: ")
                     # print(anime[0])
                     # print("------")
                     tempAnimeList.remove(anime)
 
 
+    return tempAnimeList
+'''
+def getTitle(name, tag = [], unwanttag = []):
+    #parameter list can be id,name or tags, use for search
+    #util parameter as follows:
+    #cur.execute(query,param) with param as list filling into query
+    #example: cur.execute('SELECT abc FROM xyz WHERE id = ? AND name = ?',[1,'abcd'])
+    #note: title name should be stored as lowercase letter
+
+    # param list type:  name, list of tag, list of unwanttag
+    # neu khong co name thi pass None o param name
+
+    conn = create_connection(DB)
+
+    animeListName = []
+    if name:#param[0]:
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM AnimeModel WHERE name LIKE ? OR transName LIKE ?",('%'+name+'%','%'+name+'%'))         ##
+        result = cur.fetchall() #search by name
+
+        if not result:
+            return 0                    # wrong name
+
+        animeListName = getSeasonTag(result)
+
+        if result and not tag and not unwanttag:
+            return animeListName
+
+
+    # search by tag-----------------------------------------------------------------------------------------------------------------
+
+    if not tag:#(len(param) == 1): ##
+        if unwanttag:           	#user only input unwanttag
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM AnimeModel")
+            resultt = cur.fetchall()
+            animeLst = getSeasonTag(resultt)
+            tempAnimeLst = []
+            for anime in animeLst:
+                tempAnimeLst.append(anime)
+
+            for anime in animeLst:
+                for temp in range(0,len(anime[8])):
+                    if(anime[8][temp][0] in unwanttag):
+                        tempAnimeLst.remove(anime)
+
+            return tempAnimeLst
+
+
+
+        else:                   #dont input tag and unwanttag
+            return 0
+
+    cur = conn.cursor()
+    animeList = []
+
+    if not animeListName:
+        cur.execute("SELECT distinct id, name, transName, producer, pictureLink, description, favoriteCount FROM AnimeModel INNER JOIN AnimeTag ON AnimeModel.id = AnimeTag.animeId WHERE AnimeTag.tagName LIKE ?",('%'+tag[0]+'%',))
+        #get anime of first tag
+        result = cur.fetchall()
+
+        animeList = getSeasonTag(result)
+    else:
+        # tag and name search
+        animeList = animeListName
+        animeTagFilter = []
+        if  (len(tag) > 0): #(len(param) > 1):                            #sai
+            for tagParam in range(0,len(tag)): #range(1,len(param)):
+                for anime in animeList:
+                    for temp in range(0,len(anime[8])):        #loop in tag list anime
+                        if (anime[8][temp][0] == tag[tagParam]):
+                            animeTagFilter.append(anime)
+
+                animeList = animeTagFilter
+                animeTagFilter = []
+        if not animeList:
+            return 0
+        return animeList
+
+    # tag search
+    animeTagFilter = []
+    if (len(tag) > 1): #(len(param) > 2):                            #sai
+        for tagParam in range(1,len(tag)): #range(2,len(param)):
+            for anime in animeList:
+                for temp in range(0,len(anime[8])):        #loop in tag list anime
+                    if (anime[8][temp][0] == tag[tagParam]):
+                        animeTagFilter.append(anime)
+
+            animeList = animeTagFilter
+            animeTagFilter = []
+    #print(animeList)
+    tempAnimeList = []
+    for anime in animeList:
+        tempAnimeList.append(anime)
+    if unwanttag:
+        for anime in animeList:
+            #print("amime: " + str(anime[0]) +" len: " + str(len(anime[9])))
+            for temp in range(0,len(anime[8])):
+                #print(anime[9][temp][0])
+                if(anime[8][temp][0] in unwanttag):
+                    # print("remove: ")
+                    # print(anime[0])
+                    # print("------")
+                    tempAnimeList.remove(anime)
+
+    return tempAnimeList
+
 def getTitleById(idLst):
+    conn = create_connection(DB)
+
+    sql = "SELECT * FROM AnimeModel WHERE id IN ("
+    for x in range(0,len(idLst)-1):
+        sql = sql + str(idLst[x])+ ","
+    sql = sql + str(idLst[len(idLst) - 1]) + ")"
+    cur = conn.cursor()
+    # cur.execute("SELECT * FROM AnimeModel WHERE id = ?",(id,))
+
+    cur.execute(sql)
+    result = cur.fetchall() #search by name
+
+    animeDetail = getSeasonTag(result)
+
+    return animeDetail
+
+def getTitleByIdV2(idLst):
     conn = create_connection(DB)
 
     sql = "SELECT * FROM AnimeModel WHERE id IN ("
     for x in range(0,idLst.size-1):
         sql = sql + str(idLst[x])+ ","
-    sql = sql + str(idLst[idLst.size - 1]) + ")"
+    sql = sql + str(idLst[-1]) + ")"
     cur = conn.cursor()
     # cur.execute("SELECT * FROM AnimeModel WHERE id = ?",(id,))
-    
+
     cur.execute(sql)
     result = cur.fetchall() #search by name
-    
+
     animeDetail = getSeasonTag(result)
 
     return animeDetail
@@ -275,7 +329,7 @@ def addUser(token,username,password):
             return 0
 
     newUser = (token,username,password)
-    
+
     sql = ''' INSERT INTO User(userToken,userName,password) VALUES(?,?,?)'''
     cur = conn.cursor()
     cur.execute(sql, newUser)
@@ -291,13 +345,13 @@ def getFavoriteList(username):
     conn = create_connection(DB)
 
     cur = conn.cursor()
-    cur.execute('SELECT id, name, transName, producer, pictureLink, description, favoriteCount, rank FROM (AnimeModel INNER JOIN Favorite ON AnimeModel.id = Favorite.animeId) INNER JOIN User ON Favorite.userName = User.userName WHERE User.userName = ?'
+    cur.execute('SELECT id, name, transName, producer, pictureLink, description, favoriteCount FROM (AnimeModel INNER JOIN Favorite ON AnimeModel.id = Favorite.animeId) INNER JOIN User ON Favorite.userName = User.userName WHERE User.userName = ?'
     , (username,))
 
     result = cur.fetchall()
     animeList = getSeasonTag(result)
     return animeList
-    
+
 def getIdFavoriteList(username):
     #get user favorite list, use for like/dislike
     #return list of titles
@@ -308,7 +362,7 @@ def getIdFavoriteList(username):
     cur.execute('SELECT animeId FROM Favorite WHERE userName = ?', (username,))
 
     result = cur.fetchall()
-    
+
     return result
 
 def updateFavoriteList(username, titleID, option, compatible = 0):
@@ -323,8 +377,8 @@ def updateFavoriteList(username, titleID, option, compatible = 0):
         cur.execute('SELECT userName, animeId FROM Favorite  WHERE userName = ? AND animeId = ?',(username,titleID))
 
         listAnime = cur.fetchall()
-      
-        
+
+
         if listAnime:
             temp = listAnime[0]
             if (username == temp[0] and titleID == temp[1]):
@@ -336,7 +390,7 @@ def updateFavoriteList(username, titleID, option, compatible = 0):
                 conn.close()
                 return 0
 
-        
+
         sql = "INSERT INTO Favorite(userName, animeId, compatible) VALUES(?,?,?)"
         cur.execute(sql,(username,titleID,compatible)) #default value is 0
 
@@ -347,37 +401,9 @@ def updateFavoriteList(username, titleID, option, compatible = 0):
         cur.execute(sql, (titleID,))
         conn.commit()
 
-
-        #adjust rank
-        cur.execute("SELECT id, favoriteCount, rank FROM AnimeModel ORDER BY favoriteCount")
-        listRank = cur.fetchall()
-        cur.execute("SELECT id, favoriteCount, rank FROM AnimeModel WHERE id = ?",(titleID,))
-        chosenAnime = cur.fetchall()
-        
-        for i in range(0, len(listRank)-1):
-            if chosenAnime[0][2] <= listRank[i][2]:     #rank
-                continue
-            if chosenAnime[0][1] == listRank[i][1]:       #favoriteCount
-                # adjust rank + 1 == upper rank
-                sql = "UPDATE AnimeModel SET rank = ? WHERE id = ?"
-                cur.execute(sql, (listRank[i][2],titleID))
-                conn.commit()
-                conn.close()
-                break
-
-            elif chosenAnime[0][1] < listRank[i][1]:
-                #keep rank of chosen anime adjust rank the remaining
-                sql = "UPDATE AnimeModel SET rank = rank + 1 WHERE favoriteCount < ?"
-                cur.execute(sql, (chosenAnime[0][1],))
-                conn.commit()
-                conn.close()
-                break
-
-        
-
     elif option == 1:
         sql = "DELETE FROM Favorite WHERE userName = ? AND animeId = ?"
-        cur.execute(sql,(username,titleID))  
+        cur.execute(sql,(username,titleID))
         conn.commit()
 
         #decreace favorite count
@@ -385,49 +411,19 @@ def updateFavoriteList(username, titleID, option, compatible = 0):
         cur.execute(sql, (titleID,))
         conn.commit()
 
-        
-        #adjust rank
-        cur.execute("SELECT id, favoriteCount, rank FROM AnimeModel ORDER BY rank")
-        listRank = cur.fetchall()
-        cur.execute("SELECT id, favoriteCount, rank FROM AnimeModel WHERE id = ?",(titleID,))
-        chosenAnime = cur.fetchall()
-        num = 0
-        for x in listRank:
-            if x[2] == chosenAnime[0][2]:
-                num = num + 1
-            
-        for i in range(0, len(listRank)-1):
-            if chosenAnime[0][2] >= listRank[i][2]:     #rank
-                continue
-            if chosenAnime[0][1] == listRank[i][1]:       #favoriteCount
-                # adjust rank  == lower
-                sql = "UPDATE AnimeModel SET rank = ? WHERE id = ?"
-                cur.execute(sql, (listRank[i][2],titleID))
-                conn.commit()
-                conn.close()
-                break
-
-            elif chosenAnime[0][1] > listRank[i][1]:
-                #keep rank of chosen anime adjust rank the remaining
-                sql = "UPDATE AnimeModel SET rank = ? WHERE id = ?"
-                cur.execute(sql, (chosenAnime[0][2] + num -1,titleID))
-                conn.commit()
-                conn.close()
-                break    
-    
 def updateCompatibleFavoriteList(username, titleID, compatible):
     conn = create_connection(DB)
     cur = conn.cursor()
     cur.execute('SELECT userName, animeId FROM Favorite  WHERE userName = ? AND animeId = ?',(username,titleID))
 
     listAnime = cur.fetchall()
-        
+
     if not listAnime:
         return 0
 
     sql = ''' UPDATE Favorite SET compatible = ? WHERE userName = ? AND animeId = ?'''
     cur.execute(sql, (compatible, username, titleID))
-    
+
     conn.commit()
     conn.close()
 
@@ -437,7 +433,7 @@ def getCompatibleFavoriteList(username):
     cur.execute('SELECT userName FROM Favorite  WHERE userName = ?',(username,))
 
     listAnime = cur.fetchall()
-        
+
     if not listAnime:
         return 1
 
@@ -445,7 +441,7 @@ def getCompatibleFavoriteList(username):
     cur.execute(sql, (username,))
     result = cur.fetchall()
     return result
-    
+
 def updateNotFavoriteList(username, titleID, option = 0):
     #add a title that user dislike
     #return either success or failure
@@ -454,7 +450,7 @@ def updateNotFavoriteList(username, titleID, option = 0):
 
     conn = create_connection(DB)
     cur = conn.cursor()
-    
+
     if option == 0:
         cur.execute('SELECT userName, animeId FROM NotFavorite  WHERE userName = ? AND animeId = ?',(username,titleID))
 
@@ -466,11 +462,11 @@ def updateNotFavoriteList(username, titleID, option = 0):
 
         sql = "INSERT INTO NotFavorite(userName, animeId) VALUES(?,?)"
         cur.execute(sql,(username,titleID))
-    
+
     elif option == 1:
         sql = "DELETE FROM NotFavorite WHERE userName = ? AND animeId = ?"
-        cur.execute(sql,(username,titleID))  
-        
+        cur.execute(sql,(username,titleID))
+
 
     conn.commit()
     conn.close()
@@ -486,7 +482,7 @@ def getIdNotFavoriteList(username):
     cur.execute('SELECT animeId FROM NotFavorite WHERE userName = ?', (username,))
 
     result = cur.fetchall()
-    
+
     return result
 
 def getWatchingList(username):
@@ -495,7 +491,7 @@ def getWatchingList(username):
     conn = create_connection(DB)
 
     cur = conn.cursor()
-    cur.execute('SELECT id, name, transName, producer, pictureLink, description, favoriteCount, rank FROM (AnimeModel INNER JOIN Watching ON AnimeModel.id = Watching.animeId) INNER JOIN User ON Watching.userName = User.userName WHERE User.userName = ?'
+    cur.execute('SELECT id, name, transName, producer, pictureLink, description, favoriteCount FROM (AnimeModel INNER JOIN Watching ON AnimeModel.id = Watching.animeId) INNER JOIN User ON Watching.userName = User.userName WHERE User.userName = ?'
     , (username,))
 
     result = cur.fetchall()
@@ -521,13 +517,13 @@ def updateWatchingList(username, titleID, option = 0):
 
     conn = create_connection(DB)
     cur = conn.cursor()
-    
+
 
     if option == 0:
         cur.execute('SELECT userName, animeId FROM Watching  WHERE userName = ? AND animeId = ?',(username,titleID))
 
         listAnime = cur.fetchall()
-        
+
         if listAnime:
             temp = listAnime[0]
             if (username == temp[0] and titleID == temp[1]):
@@ -539,11 +535,11 @@ def updateWatchingList(username, titleID, option = 0):
     else:
         sql = "DELETE FROM Watching WHERE userName = ? AND animeId = ?"
         cur.execute(sql,(username,titleID))
-    
+
     conn.commit()
     conn.close()
     return 1 #success
-    
+
 def getSomeRecommendation(ids):
     conn = create_connection(DB)
 
@@ -568,7 +564,7 @@ def getRecommendation(titleId):
     return row
 
 def updateRecommendation(mainId,score):
-    
+
     conn = create_connection(DB)
     cur = conn.cursor()
     cur.execute('SELECT mainAnimeId FROM AnimeRankingModel  WHERE mainAnimeId = ? ',(mainId,))
@@ -590,7 +586,7 @@ def updateRecommendation(mainId,score):
 
     conn.commit()
     conn.close()
-    
+
 def getAllNameTransname():
     #get all title, use for recommending algorithm
     conn = create_connection(DB)
@@ -626,7 +622,8 @@ def addTitle(title):
     #(test by executing insert)
     #if titleID exists, update the contents
 
-    # title type: [name, transName, producer, pictureLink, description, favoriteCount, rank, [season list], [tag list]]
+    # title type: [name, transName, producer, pictureLink, description, favoriteCount,  [season list], [tag list]]
+
     conn = create_connection(DB)
 
     cur = conn.cursor()
@@ -638,8 +635,8 @@ def addTitle(title):
     #check if username has existed => update token
     for temp in listAnime:
         if (title[0] == temp[0]):           #check title exist
-            sql = ''' UPDATE AnimeModel SET  transName = ?, producer = ?, pictureLink = ?, description = ?, favoriteCount = ?, rank = ? WHERE name = ?'''
-            cur.execute(sql, (title[1], title[2], title[3], title[4], title[5], title[6], title[0]))
+            sql = ''' UPDATE AnimeModel SET  transName = ?, producer = ?, pictureLink = ?, description = ?, favoriteCount = ? WHERE name = ?'''
+            cur.execute(sql, (title[1], title[2], title[3], title[4], title[5], title[0]))
             conn.commit()
 
             cur.execute("SELECT id FROM AnimeModel WHERE name = ?",(title[0],))
@@ -655,13 +652,16 @@ def addTitle(title):
             cur = conn.cursor()
             cur.execute(sql, (animeId,))
             conn.commit()
-
-            for season in title[7]:
+            for season in title[6]:
+                #print(season)
                 cur = conn.cursor()
                 sql = "INSERT INTO SeasonModel(seasonName, realeaseDate, numberOfEpisode, isCompleted,link, animeId) VALUES(?,?,?,?,?,?)"
                 cur.execute(sql,(season[0],season[1],season[2],season[3],season[4],animeId))
                 conn.commit()
-            for tag in title[8]:
+
+            for tag in title[7]:
+                #print(tag)
+
                 updateTag(tag)
 
                 sql = "INSERT INTO AnimeTag(animeId,tagName) VALUES(?,?)"
@@ -672,24 +672,24 @@ def addTitle(title):
             return 0        #1: add title
                             #0  update title
 
-            
 
-    sql = "INSERT INTO AnimeModel(name, transName, producer, pictureLink, description, favoriteCount, rank) VALUES(?,?,?,?,?,?,?)"
-    cur.execute(sql,(title[0],title[1],title[2],title[3],title[4],title[5],title[6]))
+
+    sql = "INSERT INTO AnimeModel(name, transName, producer, pictureLink, description, favoriteCount) VALUES(?,?,?,?,?,?)"
+    cur.execute(sql,(title[0],title[1],title[2],title[3],title[4],title[5]))
     conn.commit()
 
     cur.execute("SELECT id FROM AnimeModel WHERE name = ?",(title[0],))
     animeId = cur.fetchall()
     animeId = animeId[0][0]
-    
+
     #seasonName, realeaseDate, numberOfEpisode, isCompleted,link, animeId
-    for season in title[7]:
+    for season in title[6]:
         cur = conn.cursor()
         sql = "INSERT INTO SeasonModel(seasonName, realeaseDate, numberOfEpisode, isCompleted,link, animeId) VALUES(?,?,?,?,?,?)"
         cur.execute(sql,(season[0],season[1],season[2],season[3],season[4],animeId))
         conn.commit()
 
-    for tag in title[8]:
+    for tag in title[7]:
         updateTag(tag)
 
         sql = "INSERT INTO AnimeTag(animeId,tagName) VALUES(?,?)"
@@ -699,14 +699,14 @@ def addTitle(title):
     conn.close()
     return 1        #1: add title
                     #0  update title
-    
-    
+
+
 def updateTag(tagname):
-    #add new tag. 
+    #add new tag.
     #tag name should be stored as lowercase letter
     conn = create_connection(DB)
     cur = conn.cursor()
-    
+
     #check tag
     cur.execute('SELECT * FROM Tag')
     listTag = cur.fetchall()
@@ -724,3 +724,67 @@ def updateTag(tagname):
 
             conn.commit()
     conn.close()
+
+def getCompatible(user):
+    conn = create_connection(DB)
+
+    cur = conn.cursor()
+    cur.execute('SELECT compatible FROM UserCompatible WHERE user = ?', (user,))
+    row = cur.fetchall()
+    return row
+
+def updateCompatibleUser(user, compatible):
+
+    conn = create_connection(DB)
+
+    cur = conn.cursor()
+
+    cur.execute('SELECT user FROM UserCompatible  WHERE user = ? ',(user,))
+
+    chosenUser = cur.fetchall()
+    if chosenUser:
+        temp = chosenUser[0]
+        if (user == temp[0]):
+            sql = ''' UPDATE UserCompatible SET compatible = ? WHERE user = ? '''
+
+            cur = conn.cursor()
+            cur.execute(sql, (compatible, user))
+            conn.commit()
+            conn.close()
+            return 0
+
+    sql = "INSERT INTO UserCompatible(user, compatible) VALUES(?,?)"
+    cur.execute(sql,(user,compatible))
+
+    conn.commit()
+    conn.close()
+
+def maxTitle():
+    conn = create_connection(DB)
+    cur = conn.cursor()
+    cur.execute('SELECT max(id) FROM AnimeModel')
+    result = cur.fetchall()
+    return result
+
+def getAllRecommendation():
+    conn = create_connection(DB)
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM AnimeRankingModel')
+    row = cur.fetchall()
+    return row
+
+def changeUserPassword(username, password, newpassword):
+    conn = create_connection(DB)
+    cur = conn.cursor()
+    cur.execute('SELECT userName FROM User')
+
+    listUser = cur.fetchall()
+
+    for temp in listUser:
+        if (username == temp[0]):
+            sql = ''' UPDATE User SET password = ? WHERE userName = ? AND password = ?'''
+            cur = conn.cursor()
+            cur.execute(sql, (newpassword, username, password))
+            conn.commit()
+            return 1
+    return 0
